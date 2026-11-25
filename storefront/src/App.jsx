@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import './App.css';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import {
   addToCart,
   getCart,
@@ -15,9 +15,12 @@ import {
   updateCartItem,
   updateProfile,
 } from './services/api';
-import ProductCard from './components/ProductCard';
-import CartSection from './components/CartSection';
-import AuthBar from './components/AuthBar';
+import NavBar from './components/NavBar';
+import HomePage from './pages/HomePage';
+import CartPage from './pages/CartPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
 
 function extractCartItems(cartData) {
   if (Array.isArray(cartData?.items)) return cartData.items;
@@ -27,6 +30,9 @@ function extractCartItems(cartData) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('mvp_theme') || 'dark';
+  });
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -36,14 +42,23 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [cartMessage, setCartMessage] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('mvp_theme', theme);
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   async function refreshCart() {
     try {
       const cartData = await getCart();
       setCartItems(extractCartItems(cartData));
     } catch {
-      
+      // İlk açılışta boş sepet veya token yoksa sessiz geç
     }
   }
 
@@ -53,7 +68,7 @@ export default function App() {
         const categoryList = await getCategories();
         setCategories(categoryList);
       } catch {
-        
+        // Kategori listesi gelmezse boş bırak
       }
 
       const currentUser = await getCurrentUser();
@@ -95,7 +110,7 @@ export default function App() {
   const handleLogin = async (credentials) => {
     try {
       setAuthLoading(true);
-      setCartMessage('');
+      setNotice('');
       const guestToken = getSavedCartToken();
       const authData = await loginUser(credentials);
       setUser(authData.user || null);
@@ -105,9 +120,11 @@ export default function App() {
       }
 
       await refreshCart();
-      setCartMessage('Giriş yapıldı.');
+      setNotice('Giriş yapıldı.');
+      return true;
     } catch (err) {
-      setCartMessage(err.message || 'Giriş yapılamadı.');
+      setNotice(err.message || 'Giriş yapılamadı.');
+      return false;
     } finally {
       setAuthLoading(false);
     }
@@ -116,7 +133,7 @@ export default function App() {
   const handleRegister = async (payload) => {
     try {
       setAuthLoading(true);
-      setCartMessage('');
+      setNotice('');
       const guestToken = getSavedCartToken();
       const authData = await registerUser(payload);
       setUser(authData.user || null);
@@ -126,39 +143,13 @@ export default function App() {
       }
 
       await refreshCart();
-      setCartMessage('Kayıt başarılı, giriş yapıldı.');
+      setNotice('Kayıt başarılı, giriş yapıldı.');
+      return true;
     } catch (err) {
-      setCartMessage(err.message || 'Kayıt olunamadı.');
+      setNotice(err.message || 'Kayıt olunamadı.');
+      return false;
     } finally {
       setAuthLoading(false);
-    }
-  };
-
-  const handleUpdateProfile = async (payload) => {
-    try {
-      setCartMessage('');
-      const cleanPayload = {};
-
-      if (payload.name && payload.name !== user?.name) {
-        cleanPayload.name = payload.name;
-      }
-
-      if (payload.email && payload.email !== user?.email) {
-        cleanPayload.email = payload.email;
-      }
-
-      if (Object.keys(cleanPayload).length === 0) {
-        setCartMessage('Değişiklik yapılmadı.');
-        return;
-      }
-
-      const updatedUser = await updateProfile(cleanPayload);
-      if (updatedUser) {
-        setUser((prev) => ({ ...prev, ...updatedUser }));
-      }
-      setCartMessage('Profil bilgileri güncellendi.');
-    } catch (err) {
-      setCartMessage(err.message || 'Profil güncellenemedi.');
     }
   };
 
@@ -168,156 +159,155 @@ export default function App() {
       await logoutUser();
       setUser(null);
       await refreshCart();
-      setCartMessage('Çıkış yapıldı.');
+      setNotice('Çıkış yapıldı.');
     } finally {
       setAuthLoading(false);
     }
   };
 
+  const handleUpdateProfile = async (payload) => {
+    try {
+      setNotice('');
+      const cleanPayload = {};
+      if (payload.name && payload.name !== user?.name) {
+        cleanPayload.name = payload.name;
+      }
+      if (payload.email && payload.email !== user?.email) {
+        cleanPayload.email = payload.email;
+      }
+
+      if (Object.keys(cleanPayload).length === 0) {
+        setNotice('Değişiklik yapılmadı.');
+        return;
+      }
+
+      const updatedUser = await updateProfile(cleanPayload);
+      if (updatedUser) {
+        setUser((prev) => ({ ...prev, ...updatedUser }));
+      }
+      setNotice('Profil bilgileri güncellendi.');
+    } catch (err) {
+      setNotice(err.message || 'Profil güncellenemedi.');
+    }
+  };
+
   const handleAddToCart = async (product) => {
     try {
-      setCartMessage('');
+      setNotice('');
       const updatedCart = await addToCart(product.id, 1);
       setCartItems(extractCartItems(updatedCart));
-      setCartMessage(`${product.name ?? product.isim} sepete eklendi.`);
+      setNotice(`${product.name ?? product.isim} sepete eklendi.`);
     } catch (err) {
-      setCartMessage(err.message || 'Sepete eklenirken hata oluştu.');
+      setNotice(err.message || 'Sepete eklenirken hata oluştu.');
     }
   };
 
   const handleQuantityChange = async (productId, nextQty) => {
     try {
-      setCartMessage('');
+      setNotice('');
       const updatedCart =
         nextQty <= 0
           ? await removeCartItem(productId)
           : await updateCartItem(productId, nextQty);
       setCartItems(extractCartItems(updatedCart));
     } catch (err) {
-      setCartMessage(err.message || 'Adet güncellenemedi.');
+      setNotice(err.message || 'Adet güncellenemedi.');
     }
   };
 
   const handleRemoveItem = async (productId) => {
     try {
-      setCartMessage('');
+      setNotice('');
       const updatedCart = await removeCartItem(productId);
       setCartItems(extractCartItems(updatedCart));
     } catch (err) {
-      setCartMessage(err.message || 'Ürün silinemedi.');
+      setNotice(err.message || 'Ürün silinemedi.');
     }
   };
 
   const handleClearCart = async () => {
     try {
-      setCartMessage('');
+      setNotice('');
       for (const item of cartItems) {
         const productId = item.product_id ?? item.product?.id ?? item.id;
         await removeCartItem(productId);
       }
       await refreshCart();
-      setCartMessage('Sepet temizlendi.');
+      setNotice('Sepet temizlendi.');
     } catch (err) {
-      setCartMessage(err.message || 'Sepet temizlenirken hata oluştu.');
+      setNotice(err.message || 'Sepet temizlenirken hata oluştu.');
     }
   };
 
   return (
-    <div className="page">
-      <header className="navbar">
-        <h1>E-Commerce MVP Storefront</h1>
-        <div className="cart-badge">Sepet: {cartCount}</div>
-      </header>
+    <BrowserRouter>
+      <NavBar
+        cartCount={cartCount}
+        user={user}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+      />
 
-      <main className="container">
-       <AuthBar
-          user={user}
-          authLoading={authLoading}
-          onLogin={handleLogin}
-          onRegister={handleRegister}
-          onLogout={handleLogout}
-          onUpdateProfile={handleUpdateProfile}
-        />
-
-        <h2>Ürünler</h2>
-
-        <div
-          style={{
-            display: 'flex',
-            gap: '12px',
-            flexWrap: 'wrap',
-            marginBottom: '16px',
-          }}
-        >
-          <input
-            type="text"
-            placeholder="Ürün ara..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              flex: '1 1 220px',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid #4b5563',
-              backgroundColor: '#1f2937',
-              color: '#ffffff',
-            }}
-          />
-
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            style={{
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid #4b5563',
-              backgroundColor: '#1f2937',
-              color: '#ffffff',
-            }}
-          >
-            <option value="">Tüm Kategoriler</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name ?? cat.isim ?? `Kategori #${cat.id}`}
-              </option>
-            ))}
-          </select>
+      {notice && (
+        <div className="page-shell" style={{ paddingTop: '16px', paddingBottom: 0 }}>
+          <div className="notice-banner">{notice}</div>
         </div>
+      )}
 
-        {cartMessage && (
-          <p style={{ marginBottom: '12px', fontWeight: 600 }}>{cartMessage}</p>
-        )}
-
-        {loading && <p>Ürünler yükleniyor...</p>}
-
-        {!loading && error && (
-          <p style={{ color: '#dc2626', fontWeight: 600 }}>Hata: {error}</p>
-        )}
-
-        {!loading && !error && products.length === 0 && (
-          <p>Filtreye uygun ürün bulunmuyor.</p>
-        )}
-
-        {!loading && !error && products.length > 0 && (
-          <div className="product-grid">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAddToCart={handleAddToCart}
-              />
-            ))}
-          </div>
-        )}
-
-        <CartSection
-          cartItems={cartItems}
-          cartCount={cartCount}
-          onQuantityChange={handleQuantityChange}
-          onRemoveItem={handleRemoveItem}
-          onClearCart={handleClearCart}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <HomePage
+              products={products}
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              loading={loading}
+              error={error}
+              onAddToCart={handleAddToCart}
+            />
+          }
         />
-      </main>
-    </div>
+        <Route
+          path="/cart"
+          element={
+            <CartPage
+              cartItems={cartItems}
+              cartCount={cartCount}
+              onQuantityChange={handleQuantityChange}
+              onRemoveItem={handleRemoveItem}
+              onClearCart={handleClearCart}
+            />
+          }
+        />
+        <Route
+          path="/login"
+          element={<LoginPage onLogin={handleLogin} authLoading={authLoading} />}
+        />
+        <Route
+          path="/register"
+          element={
+            <RegisterPage
+              onRegister={handleRegister}
+              authLoading={authLoading}
+            />
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProfilePage
+              user={user}
+              authLoading={authLoading}
+              onLogout={handleLogout}
+              onUpdateProfile={handleUpdateProfile}
+            />
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
