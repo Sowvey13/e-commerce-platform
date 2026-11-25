@@ -328,3 +328,41 @@ export async function updateProfile(payload) {
 
   return result.data?.user ?? result.data;
 }
+
+export async function forgotPassword(email) {
+  const response = await fetch(`${API_BASE_URL}/forgot-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Şifre sıfırlama talebi gönderilemedi.');
+  }
+
+  return result;
+}
+
+export async function resetPassword(payload) {
+  const response = await fetch(`${API_BASE_URL}/reset-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Şifre sıfırlanamadı.');
+  }
+
+  return result;
+}

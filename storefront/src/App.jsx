@@ -21,6 +21,7 @@ import CartPage from './pages/CartPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 
 function extractCartItems(cartData) {
   if (Array.isArray(cartData?.items)) return cartData.items;
@@ -286,6 +287,7 @@ export default function App() {
         <Route
           path="/login"
           element={<LoginPage onLogin={handleLogin} authLoading={authLoading} />}
+          
         />
         <Route
           path="/register"
@@ -296,6 +298,7 @@ export default function App() {
             />
           }
         />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route
           path="/profile"
           element={

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 export default function LoginPage({ onLogin, authLoading }) {
   const [email, setEmail] = useState('admin@example.com');
@@ -22,6 +23,7 @@ export default function LoginPage({ onLogin, authLoading }) {
           <p className="page-subtitle">
             Korumalı admin işlemlerine ve kullanıcı listesine erişmek için giriş yap.
           </p>
+          
         </div>
       </div>
 
@@ -46,6 +48,11 @@ export default function LoginPage({ onLogin, authLoading }) {
           <button type="submit" disabled={authLoading}>
             {authLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
           </button>
+          <p className="page-subtitle" style={{ marginTop: '12px' }}>
+  <Link to="/forgot-password" style={{ textDecoration: 'underline' }}>
+    Şifremi unuttum
+  </Link>
+</p>
         </form>
       </section>
     </div>

@@ -18,6 +18,7 @@ import ProductsPage from './pages/ProductsPage';
 import CategoriesPage from './pages/CategoriesPage';
 import UsersPage from './pages/UsersPage';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 
 function ProtectedRoute({ isAuthenticated, children }) {
   if (!isAuthenticated) {
@@ -287,6 +288,16 @@ function AdminAppContent() {
             )
           }
         />
+        <Route
+  path="/forgot-password"
+  element={
+    isAuthenticated ? (
+      <Navigate to="/users" replace />
+    ) : (
+      <ForgotPasswordPage />
+    )
+  }
+/>
       </Routes>
     </>
   );
