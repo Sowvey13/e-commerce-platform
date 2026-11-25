@@ -13,6 +13,7 @@ import {
   getCategories,
   getProducts,
   getUsers,
+  updateAdminOrderStatus,
 } from './services/api';
 import AdminNavBar from './components/AdminNavBar';
 import ProductsPage from './pages/ProductsPage';
@@ -41,6 +42,7 @@ function AdminAppContent() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userOrders, setUserOrders] = useState([]);
   const [userOrdersLoading, setUserOrdersLoading] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -124,6 +126,26 @@ function AdminAppContent() {
       setError(err.message || 'Kullanıcı siparişleri yüklenemedi.');
     } finally {
       setUserOrdersLoading(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, nextStatus) => {
+    if (!orderId || !nextStatus) return;
+
+    try {
+      setUpdatingOrderId(orderId);
+      setNotice('');
+      setError('');
+      await updateAdminOrderStatus(orderId, nextStatus);
+      if (selectedUser?.id) {
+        const updatedList = await getAdminUserOrders(selectedUser.id);
+        setUserOrders(updatedList);
+      }
+      setNotice(`#${orderId} numaralı siparişin durumu "${nextStatus}" olarak güncellendi.`);
+    } catch (err) {
+      setError(err.message || 'Sipariş durumu güncellenemedi.');
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -306,7 +328,9 @@ function AdminAppContent() {
                 selectedUser={selectedUser}
                 userOrders={userOrders}
                 userOrdersLoading={userOrdersLoading}
+                updatingOrderId={updatingOrderId}
                 onSelectUser={handleSelectUser}
+                onUpdateOrderStatus={handleUpdateOrderStatus}
               />
             </ProtectedRoute>
           }

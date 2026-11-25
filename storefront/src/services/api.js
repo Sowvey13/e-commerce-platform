@@ -304,6 +304,7 @@ export async function mergeGuestCart(guestToken) {
   clearSavedCartToken();
   return result.data;
 }
+
 export async function updateProfile(payload) {
   const token = getSavedAuthToken();
   if (!token) {
@@ -477,6 +478,21 @@ export async function payOrder(orderId, payload = { payment_method: 'mock' }) {
 
   if (!response.ok || result.status === false) {
     throw new Error(result.message || 'Ödeme işlemi başarısız.');
+  }
+
+  return result.data ?? result;
+}
+
+export async function cancelOrder(orderId) {
+  const response = await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
+    method: 'PATCH',
+    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Sipariş iptal edilemedi.');
   }
 
   return result.data ?? result;

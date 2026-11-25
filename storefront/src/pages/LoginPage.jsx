@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-
 export default function LoginPage({ onLogin, authLoading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,14 +46,45 @@ export default function LoginPage({ onLogin, authLoading }) {
           </button>
         </form>
 
-        <p className="page-subtitle" style={{ marginTop: '16px' }}>
-          Hesabın yok mu? <Link to="/register" style={{ color: '#60a5fa' }}>Kayıt Ol</Link>
-        </p>
-        <p className="page-subtitle" style={{ marginTop: '12px' }}>
-  <Link to="/forgot-password" style={{ textDecoration: 'underline' }}>
-    Şifremi unuttum
-  </Link>
-</p>
+        <div
+          style={{
+            marginTop: '18px',
+            paddingTop: '14px',
+            borderTop: '1px solid rgba(148, 163, 184, 0.16)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap',
+            fontSize: '0.88rem',
+          }}
+        >
+          <span className="item-meta" style={{ margin: 0 }}>
+            Hesabın yok mu?{' '}
+            <Link
+              to="/register"
+              style={{
+                color: '#3b82f6',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Kayıt Ol
+            </Link>
+          </span>
+
+          <Link
+            to="/forgot-password"
+            className="item-meta"
+            style={{
+              margin: 0,
+              fontWeight: 500,
+              textDecoration: 'none',
+            }}
+          >
+            Şifremi unuttum
+          </Link>
+        </div>
       </div>
     </div>
   );

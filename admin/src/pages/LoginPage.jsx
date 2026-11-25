@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function LoginPage({ onLogin, authLoading }) {
   const [email, setEmail] = useState('admin@example.com');
@@ -17,17 +16,17 @@ export default function LoginPage({ onLogin, authLoading }) {
 
   return (
     <div className="page-shell">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Admin Girişi</h1>
-          <p className="page-subtitle">
-            Korumalı admin işlemlerine ve kullanıcı listesine erişmek için giriş yap.
-          </p>
-          
-        </div>
-      </div>
+      <section
+        className="card-panel"
+        style={{ maxWidth: '440px', margin: '24px auto 0' }}
+      >
+        <h1 className="page-title" style={{ fontSize: '24px' }}>
+          Admin Girişi
+        </h1>
+        <p className="page-subtitle" style={{ marginBottom: '20px' }}>
+          Korumalı admin işlemlerine ve kullanıcı listesine erişmek için giriş yap.
+        </p>
 
-      <section className="card-panel" style={{ maxWidth: '440px', margin: '0 auto' }}>
         <form onSubmit={handleSubmit} className="form-grid">
           <input
             type="email"
@@ -48,12 +47,31 @@ export default function LoginPage({ onLogin, authLoading }) {
           <button type="submit" disabled={authLoading}>
             {authLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
           </button>
-          <p className="page-subtitle" style={{ marginTop: '12px' }}>
-  <Link to="/forgot-password" style={{ textDecoration: 'underline' }}>
-    Şifremi unuttum
-  </Link>
-</p>
         </form>
+
+        <div
+          style={{
+            marginTop: '18px',
+            paddingTop: '14px',
+            borderTop: '1px solid rgba(148, 163, 184, 0.16)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            fontSize: '0.88rem',
+          }}
+        >
+          <Link
+            to="/forgot-password"
+            className="item-meta"
+            style={{
+              margin: 0,
+              fontWeight: 500,
+              textDecoration: 'none',
+            }}
+          >
+            Şifremi unuttum
+          </Link>
+        </div>
       </section>
     </div>
   );

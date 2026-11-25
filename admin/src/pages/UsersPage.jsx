@@ -24,7 +24,7 @@ function isActiveOrder(status) {
   return !['delivered', 'cancelled', 'canceled'].includes(normalized);
 }
 
-function OrderCard({ order }) {
+function OrderCard({ order, updatingOrderId, onUpdateOrderStatus }) {
   const status = order.status ?? order.order_status ?? 'pending';
   const totalAmount =
     order.total_amount ?? order.total_price ?? order.total ?? 0;
@@ -33,9 +33,18 @@ function OrderCard({ order }) {
     : Array.isArray(order.order_items)
       ? order.order_items
       : [];
+  const isUpdating = updatingOrderId === order.id;
 
   return (
-    <div className="list-item" style={{ alignItems: 'flex-start', gap: '12px' }}>
+    <div
+      className="list-item"
+      style={{
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: '12px',
+        flexWrap: 'wrap',
+      }}
+    >
       <div>
         <div
           style={{
@@ -73,6 +82,23 @@ function OrderCard({ order }) {
           </div>
         )}
       </div>
+
+      {onUpdateOrderStatus && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <select
+            value={status}
+            disabled={isUpdating}
+            onChange={(e) => onUpdateOrderStatus(order.id, e.target.value)}
+          >
+            <option value="pending">pending</option>
+            <option value="paid">paid</option>
+            <option value="shipped">shipped</option>
+            <option value="delivered">delivered</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+          {isUpdating && <span className="item-meta">Güncelleniyor...</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -83,7 +109,9 @@ export default function UsersPage({
   selectedUser,
   userOrders = [],
   userOrdersLoading = false,
+  updatingOrderId = null,
   onSelectUser,
+  onUpdateOrderStatus,
 }) {
   const activeOrders = userOrders.filter((o) =>
     isActiveOrder(o.status ?? o.order_status)
@@ -95,7 +123,7 @@ export default function UsersPage({
         <div>
           <h1 className="page-title">Kullanıcı Listesi</h1>
           <p className="page-subtitle">
-            Kullanıcıya tıklayarak aktif siparişini ve sipariş geçmişini görüntüle.
+            Kullanıcıya tıklayarak aktif siparişini, sipariş geçmişini ve durumlarını yönet.
           </p>
         </div>
       </div>
@@ -159,7 +187,12 @@ export default function UsersPage({
                 ) : (
                   <div className="list-stack">
                     {activeOrders.map((order) => (
-                      <OrderCard key={order.id} order={order} />
+                      <OrderCard
+                        key={order.id}
+                        order={order}
+                        updatingOrderId={updatingOrderId}
+                        onUpdateOrderStatus={onUpdateOrderStatus}
+                      />
                     ))}
                   </div>
                 )}
@@ -174,7 +207,12 @@ export default function UsersPage({
                 ) : (
                   <div className="list-stack">
                     {userOrders.map((order) => (
-                      <OrderCard key={order.id} order={order} />
+                      <OrderCard
+                        key={order.id}
+                        order={order}
+                        updatingOrderId={updatingOrderId}
+                        onUpdateOrderStatus={onUpdateOrderStatus}
+                      />
                     ))}
                   </div>
                 )}

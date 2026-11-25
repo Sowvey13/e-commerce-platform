@@ -293,3 +293,29 @@ export async function getAdminUserOrders(userId) {
 
   return result.data?.data || [];
 }
+
+export async function updateAdminOrderStatus(orderId, status) {
+  const token = getAdminToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ status }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Sipariş durumu güncellenemedi.');
+  }
+
+  return result.data ?? result;
+}

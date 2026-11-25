@@ -68,9 +68,33 @@ export default function RegisterPage({ onRegister, authLoading }) {
           </button>
         </form>
 
-        <p className="page-subtitle" style={{ marginTop: '16px' }}>
-          Zaten hesabın var mı? <Link to="/login" style={{ color: '#60a5fa' }}>Giriş Yap</Link>
-        </p>
+        <div
+          style={{
+            marginTop: '18px',
+            paddingTop: '14px',
+            borderTop: '1px solid rgba(148, 163, 184, 0.16)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap',
+            fontSize: '0.88rem',
+          }}
+        >
+          <span className="item-meta" style={{ margin: 0 }}>
+            Zaten hesabın var mı?{' '}
+            <Link
+              to="/login"
+              style={{
+                color: '#3b82f6',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Giriş Yap
+            </Link>
+          </span>
+        </div>
       </div>
     </div>
   );

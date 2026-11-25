@@ -1,13 +1,41 @@
 import { Link } from 'react-router-dom';
 
-function formatStatus(status) {
+function getStatusMeta(status) {
   const normalized = String(status || '').toLowerCase();
-  if (normalized === 'paid') return 'Ödendi (paid)';
-  if (normalized === 'cancelled' || normalized === 'canceled') {
-    return 'İptal Edildi (cancelled)';
+
+  if (normalized === 'paid') {
+    return {
+      label: 'Ödendi • paid',
+      bg: 'rgba(16, 185, 129, 0.14)',
+      border: 'rgba(16, 185, 129, 0.35)',
+      color: '#34d399',
+    };
   }
-  if (normalized === 'shipped') return 'Kargolandı (shipped)';
-  return 'Beklemede (pending)';
+
+  if (normalized === 'cancelled' || normalized === 'canceled') {
+    return {
+      label: 'İptal Edildi • cancelled',
+      bg: 'rgba(239, 68, 68, 0.14)',
+      border: 'rgba(239, 68, 68, 0.35)',
+      color: '#f87171',
+    };
+  }
+
+  if (normalized === 'shipped') {
+    return {
+      label: 'Kargolandı • shipped',
+      bg: 'rgba(59, 130, 246, 0.14)',
+      border: 'rgba(59, 130, 246, 0.35)',
+      color: '#60a5fa',
+    };
+  }
+
+  return {
+    label: 'Beklemede • pending',
+    bg: 'rgba(245, 158, 11, 0.14)',
+    border: 'rgba(245, 158, 11, 0.35)',
+    color: '#fbbf24',
+  };
 }
 
 function formatDate(rawDate) {
@@ -31,6 +59,7 @@ export default function OrdersPage({
   ordersLoading,
   payingOrderId,
   onPayOrder,
+  onCancelOrder,
 }) {
   if (!user) {
     return (
@@ -56,7 +85,7 @@ export default function OrdersPage({
         <div>
           <h1 className="page-title">Siparişlerim</h1>
           <p className="page-subtitle">
-            Oluşturduğun siparişleri, durumlarını ve fake ödeme aksiyonlarını buradan takip et.
+            Oluşturduğun siparişleri, durumlarını ve ödeme/iptal aksiyonlarını buradan takip et.
           </p>
         </div>
         <Link to="/" className="secondary-btn address-action-btn">
@@ -65,17 +94,27 @@ export default function OrdersPage({
       </div>
 
       <section className="card-panel">
-        <h2 className="section-title">Sipariş Geçmişi ({orders.length})</h2>
+        <h2 className="section-title" style={{ marginBottom: '18px' }}>
+          Sipariş Geçmişi ({orders.length})
+        </h2>
 
         {ordersLoading ? (
           <p className="empty-state">Siparişler yükleniyor...</p>
         ) : orders.length === 0 ? (
           <p className="empty-state">Henüz bir siparişin bulunmuyor.</p>
         ) : (
-          <div className="address-list">
+          <div
+            className="address-list"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
             {orders.map((order) => {
               const orderId = order.id;
               const status = order.status ?? order.order_status ?? 'pending';
+              const statusMeta = getStatusMeta(status);
               const totalAmount =
                 order.total_price ?? order.total_amount ?? order.total ?? null;
               const items = Array.isArray(order.items)
@@ -85,29 +124,107 @@ export default function OrdersPage({
                   : [];
 
               return (
-                <div key={orderId} className="address-item-card">
-                  <div className="address-item-body">
-                    <div className="address-item-header">
-                      <span className="address-badge">Sipariş #{orderId}</span>
-                      <span className="address-location">
-                        {formatStatus(status)}
+                <div
+                  key={orderId}
+                  className="address-item-card"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: '16px',
+                    flexWrap: 'wrap',
+                    padding: '18px 20px',
+                    borderRadius: '14px',
+                    border: '1px solid rgba(148, 163, 184, 0.16)',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                  }}
+                >
+                  <div
+                    className="address-item-body"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      flex: '1 1 320px',
+                    }}
+                  >
+                    <div
+                      className="address-item-header"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        className="address-badge"
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '0.98rem',
+                          letterSpacing: '0.01em',
+                        }}
+                      >
+                        Sipariş #{orderId}
+                      </span>
+
+                      <span
+                        className="address-location"
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '999px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          background: statusMeta.bg,
+                          border: `1px solid ${statusMeta.border}`,
+                          color: statusMeta.color,
+                        }}
+                      >
+                        {statusMeta.label}
                       </span>
                     </div>
 
-                    {totalAmount !== null && totalAmount !== undefined && (
-                      <p className="address-line-text">
-                        <strong>Toplam:</strong> {totalAmount} TL
-                      </p>
-                    )}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        flexWrap: 'wrap',
+                        fontSize: '0.92rem',
+                      }}
+                    >
+                      {totalAmount !== null && totalAmount !== undefined && (
+                        <span style={{ fontWeight: 600 }}>
+                          Toplam: {totalAmount} TL
+                        </span>
+                      )}
 
-                    {order.created_at && (
-                      <span className="address-postal">
-                        Tarih: {formatDate(order.created_at)}
-                      </span>
-                    )}
+                      {order.created_at && (
+                        <span
+                          className="address-postal"
+                          style={{ color: '#94a3b8', fontSize: '0.85rem' }}
+                        >
+                          {formatDate(order.created_at)}
+                        </span>
+                      )}
+                    </div>
 
                     {items.length > 0 && (
-                      <div className="row-meta" style={{ marginTop: '4px' }}>
+                      <div
+                        className="row-meta"
+                        style={{
+                          marginTop: '2px',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          background: 'rgba(15, 23, 42, 0.45)',
+                          border: '1px solid rgba(148, 163, 184, 0.1)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          fontSize: '0.88rem',
+                          color: '#cbd5e1',
+                        }}
+                      >
                         {items.map((item, idx) => {
                           const name =
                             item.product_name ??
@@ -117,9 +234,20 @@ export default function OrdersPage({
                           const qty = item.quantity ?? item.adet ?? 1;
                           const unitPrice = item.unit_price ?? item.birim_fiyat;
                           return (
-                            <div key={item.id ?? idx}>
-                              • {name} × {qty}
-                              {unitPrice !== undefined ? ` (${unitPrice} TL)` : ''}
+                            <div
+                              key={item.id ?? idx}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: '12px',
+                              }}
+                            >
+                              <span>• {name} × {qty}</span>
+                              {unitPrice !== undefined && (
+                                <span style={{ color: '#94a3b8' }}>
+                                  {unitPrice} TL
+                                </span>
+                              )}
                             </div>
                           );
                         })}
@@ -127,8 +255,16 @@ export default function OrdersPage({
                     )}
                   </div>
 
-                  <div className="address-item-actions">
-                    {canPayOrder(status) && (
+                  {canPayOrder(status) && (
+                    <div
+                      className="address-item-actions"
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                      }}
+                    >
                       <button
                         type="button"
                         className="address-action-btn"
@@ -136,11 +272,19 @@ export default function OrdersPage({
                         onClick={() => onPayOrder(orderId)}
                       >
                         {payingOrderId === orderId
-                          ? 'Ödeniyor...'
+                          ? 'İşleniyor...'
                           : 'Fake Ödeme Yap'}
                       </button>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        className="danger-btn address-action-btn"
+                        disabled={payingOrderId === orderId}
+                        onClick={() => onCancelOrder?.(orderId)}
+                      >
+                        Siparişi İptal Et
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

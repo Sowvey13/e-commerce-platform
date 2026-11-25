@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import {
   addToCart,
+  cancelOrder,
   createAddress,
   createOrder,
   deleteAddress,
@@ -374,6 +375,20 @@ export default function App() {
     }
   };
 
+  const handleCancelOrder = async (orderId) => {
+    try {
+      setPayingOrderId(orderId);
+      setNotice('');
+      await cancelOrder(orderId);
+      await refreshOrders();
+      setNotice(`#${orderId} numaralı sipariş iptal edildi.`);
+    } catch (err) {
+      setNotice(err.message || 'Sipariş iptal edilemedi.');
+    } finally {
+      setPayingOrderId(null);
+    }
+  };
+
   return (
     <BrowserRouter>
       <NavBar
@@ -444,6 +459,7 @@ export default function App() {
               ordersLoading={ordersLoading}
               payingOrderId={payingOrderId}
               onPayOrder={handlePayOrder}
+              onCancelOrder={handleCancelOrder}
             />
           }
         />
