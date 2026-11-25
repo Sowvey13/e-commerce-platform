@@ -1,14 +1,33 @@
 const API_BASE_URL = 'http://localhost/api/v1';
 const CART_TOKEN_KEY = 'mvp_cart_token';
+const AUTH_TOKEN_KEY = 'mvp_auth_token';
 
-function getSavedCartToken() {
+export function getSavedCartToken() {
   return localStorage.getItem(CART_TOKEN_KEY);
 }
 
-function saveCartToken(token) {
+export function saveCartToken(token) {
   if (token) {
     localStorage.setItem(CART_TOKEN_KEY, token);
   }
+}
+
+export function clearSavedCartToken() {
+  localStorage.removeItem(CART_TOKEN_KEY);
+}
+
+export function getSavedAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function saveAuthToken(token) {
+  if (token) {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+  }
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
 function buildHeaders(extraHeaders = {}) {
@@ -17,9 +36,14 @@ function buildHeaders(extraHeaders = {}) {
     ...extraHeaders,
   };
 
-  const token = getSavedCartToken();
-  if (token) {
-    headers['X-Cart-Token'] = token;
+  const authToken = getSavedAuthToken();
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
+  const cartToken = getSavedCartToken();
+  if (cartToken) {
+    headers['X-Cart-Token'] = cartToken;
   }
 
   return headers;
@@ -170,4 +194,137 @@ export async function removeCartItem(productId) {
   }
 
   return result.data;
+}
+
+export async function loginUser(credentials) {
+  const response = await fetch(`${API_BASE_URL}/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(credentials),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Giriş yapılamadı.');
+  }
+
+  if (result.data?.token) {
+    saveAuthToken(result.data.token);
+  }
+
+  return result.data;
+}
+
+export async function registerUser(payload) {
+  const response = await fetch(`${API_BASE_URL}/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Kayıt olunamadı.');
+  }
+
+  if (result.data?.token) {
+    saveAuthToken(result.data.token);
+  }
+
+  return result.data;
+}
+
+export async function getCurrentUser() {
+  const token = getSavedAuthToken();
+  if (!token) return null;
+
+  const response = await fetch(`${API_BASE_URL}/user`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    clearAuthToken();
+    return null;
+  }
+
+  const data = await response.json();
+  return data?.data ?? data;
+}
+
+export async function logoutUser() {
+  const token = getSavedAuthToken();
+  if (token) {
+    try {
+      await fetch(`${API_BASE_URL}/logout`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    } catch {
+      // Ağ hatası olsa bile yerel token'ı temizle
+    }
+  }
+  clearAuthToken();
+}
+
+export async function mergeGuestCart(guestToken) {
+  const token = getSavedAuthToken();
+  if (!token || !guestToken) return null;
+
+  const response = await fetch(`${API_BASE_URL}/cart/merge`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+      'X-Cart-Token': guestToken,
+    },
+    body: JSON.stringify({ guest_token: guestToken }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    return null;
+  }
+
+  clearSavedCartToken();
+  return result.data;
+}
+export async function updateProfile(payload) {
+  const token = getSavedAuthToken();
+  if (!token) {
+    throw new Error('Profil güncellemek için giriş yapmalısın.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/profile`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Profil güncellenemedi.');
+  }
+
+  return result.data?.user ?? result.data;
 }

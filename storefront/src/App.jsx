@@ -4,12 +4,20 @@ import {
   addToCart,
   getCart,
   getCategories,
+  getCurrentUser,
   getProducts,
+  getSavedCartToken,
+  loginUser,
+  logoutUser,
+  mergeGuestCart,
+  registerUser,
   removeCartItem,
   updateCartItem,
+  updateProfile,
 } from './services/api';
 import ProductCard from './components/ProductCard';
 import CartSection from './components/CartSection';
+import AuthBar from './components/AuthBar';
 
 function extractCartItems(cartData) {
   if (Array.isArray(cartData?.items)) return cartData.items;
@@ -24,6 +32,8 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [cartItems, setCartItems] = useState([]);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [cartMessage, setCartMessage] = useState('');
@@ -38,17 +48,23 @@ export default function App() {
   }
 
   useEffect(() => {
-    async function loadCategoriesAndCart() {
+    async function loadInitialMeta() {
       try {
         const categoryList = await getCategories();
         setCategories(categoryList);
       } catch {
         
       }
+
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+      }
+
       await refreshCart();
     }
 
-    loadCategoriesAndCart();
+    loadInitialMeta();
   }, []);
 
   useEffect(() => {
@@ -75,6 +91,88 @@ export default function App() {
     (sum, item) => sum + Number(item.quantity ?? item.qty ?? 1),
     0
   );
+
+  const handleLogin = async (credentials) => {
+    try {
+      setAuthLoading(true);
+      setCartMessage('');
+      const guestToken = getSavedCartToken();
+      const authData = await loginUser(credentials);
+      setUser(authData.user || null);
+
+      if (guestToken) {
+        await mergeGuestCart(guestToken);
+      }
+
+      await refreshCart();
+      setCartMessage('Giriş yapıldı.');
+    } catch (err) {
+      setCartMessage(err.message || 'Giriş yapılamadı.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRegister = async (payload) => {
+    try {
+      setAuthLoading(true);
+      setCartMessage('');
+      const guestToken = getSavedCartToken();
+      const authData = await registerUser(payload);
+      setUser(authData.user || null);
+
+      if (guestToken) {
+        await mergeGuestCart(guestToken);
+      }
+
+      await refreshCart();
+      setCartMessage('Kayıt başarılı, giriş yapıldı.');
+    } catch (err) {
+      setCartMessage(err.message || 'Kayıt olunamadı.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async (payload) => {
+    try {
+      setCartMessage('');
+      const cleanPayload = {};
+
+      if (payload.name && payload.name !== user?.name) {
+        cleanPayload.name = payload.name;
+      }
+
+      if (payload.email && payload.email !== user?.email) {
+        cleanPayload.email = payload.email;
+      }
+
+      if (Object.keys(cleanPayload).length === 0) {
+        setCartMessage('Değişiklik yapılmadı.');
+        return;
+      }
+
+      const updatedUser = await updateProfile(cleanPayload);
+      if (updatedUser) {
+        setUser((prev) => ({ ...prev, ...updatedUser }));
+      }
+      setCartMessage('Profil bilgileri güncellendi.');
+    } catch (err) {
+      setCartMessage(err.message || 'Profil güncellenemedi.');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setAuthLoading(true);
+      await logoutUser();
+      setUser(null);
+      await refreshCart();
+      setCartMessage('Çıkış yapıldı.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const handleAddToCart = async (product) => {
     try {
@@ -110,6 +208,20 @@ export default function App() {
     }
   };
 
+  const handleClearCart = async () => {
+    try {
+      setCartMessage('');
+      for (const item of cartItems) {
+        const productId = item.product_id ?? item.product?.id ?? item.id;
+        await removeCartItem(productId);
+      }
+      await refreshCart();
+      setCartMessage('Sepet temizlendi.');
+    } catch (err) {
+      setCartMessage(err.message || 'Sepet temizlenirken hata oluştu.');
+    }
+  };
+
   return (
     <div className="page">
       <header className="navbar">
@@ -118,6 +230,15 @@ export default function App() {
       </header>
 
       <main className="container">
+       <AuthBar
+          user={user}
+          authLoading={authLoading}
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+          onLogout={handleLogout}
+          onUpdateProfile={handleUpdateProfile}
+        />
+
         <h2>Ürünler</h2>
 
         <div
@@ -194,6 +315,7 @@ export default function App() {
           cartCount={cartCount}
           onQuantityChange={handleQuantityChange}
           onRemoveItem={handleRemoveItem}
+          onClearCart={handleClearCart}
         />
       </main>
     </div>
