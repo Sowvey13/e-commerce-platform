@@ -1,4 +1,50 @@
 const API_BASE_URL = 'http://localhost/api/v1';
+const ADMIN_TOKEN_KEY = 'admin_auth_token';
+
+export function getAdminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_KEY) || '';
+}
+
+export function setAdminToken(token) {
+  if (token) {
+    localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+  }
+}
+
+export async function adminLogin(credentials) {
+  const response = await fetch(`${API_BASE_URL}/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(credentials),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Giriş yapılamadı.');
+  }
+
+  const token =
+    result.data?.token ||
+    result.data?.access_token ||
+    result.token ||
+    '';
+
+  if (token) {
+    setAdminToken(token);
+  }
+
+  return result.data;
+}
+
+export function adminLogout() {
+  setAdminToken('');
+}
 
 export async function getProducts() {
   const response = await fetch(`${API_BASE_URL}/products`, {
@@ -49,12 +95,19 @@ export async function getCategories() {
 }
 
 export async function createProduct(payload) {
+  const token = getAdminToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}/products`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -68,11 +121,18 @@ export async function createProduct(payload) {
 }
 
 export async function deleteProduct(productId) {
+  const token = getAdminToken();
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
     method: 'DELETE',
-    headers: {
-      Accept: 'application/json',
-    },
+    headers,
   });
 
   const result = await response.json();
@@ -85,12 +145,19 @@ export async function deleteProduct(productId) {
 }
 
 export async function createCategory(payload) {
+  const token = getAdminToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}/categories`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -104,11 +171,18 @@ export async function createCategory(payload) {
 }
 
 export async function deleteCategory(categoryId) {
+  const token = getAdminToken();
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}/categories/${categoryId}`, {
     method: 'DELETE',
-    headers: {
-      Accept: 'application/json',
-    },
+    headers,
   });
 
   const result = await response.json();
@@ -118,4 +192,35 @@ export async function deleteCategory(categoryId) {
   }
 
   return result.data;
+}
+
+export async function getUsers() {
+  const token = getAdminToken();
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/admin/users`, {
+    headers,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Kullanıcılar yüklenemedi.');
+  }
+
+  if (Array.isArray(result.data?.items)) {
+    return result.data.items;
+  }
+
+  if (Array.isArray(result.data)) {
+    return result.data;
+  }
+
+  return result.data?.data || [];
 }

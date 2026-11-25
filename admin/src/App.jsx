@@ -1,31 +1,56 @@
-import { useEffect, useState } from 'react';
-import './App.css';
+import { useCallback, useEffect, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import './index.css';
 import {
+  adminLogin,
+  adminLogout,
   createCategory,
   createProduct,
   deleteCategory,
   deleteProduct,
+  getAdminToken,
   getCategories,
   getProducts,
+  getUsers,
 } from './services/api';
+import AdminNavBar from './components/AdminNavBar';
+import ProductsPage from './pages/ProductsPage';
+import CategoriesPage from './pages/CategoriesPage';
+import UsersPage from './pages/UsersPage';
+import LoginPage from './pages/LoginPage';
 
-export default function App() {
+function ProtectedRoute({ isAuthenticated, children }) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
+function AdminAppContent() {
+  const navigate = useNavigate();
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('admin_mvp_theme') || 'dark';
+  });
+  const [token, setToken] = useState(() => getAdminToken());
+  const [authLoading, setAuthLoading] = useState(false);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [categorySubmitting, setCategorySubmitting] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [stock, setStock] = useState('');
-  const [categoryId, setCategoryId] = useState('');
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('admin_mvp_theme', theme);
+  }, [theme]);
 
-  
-  const [categoryName, setCategoryName] = useState('');
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   async function loadProducts() {
     try {
@@ -45,29 +70,88 @@ export default function App() {
       const list = await getCategories();
       setCategories(list);
     } catch {
-      
+      // Kategori listesi alınamazsa mevcut hali koru
     }
   }
+
+  const loadUsers = useCallback(async () => {
+    try {
+      setUsersLoading(true);
+      const list = await getUsers();
+      setUsers(list);
+      setError('');
+    } catch (err) {
+      setUsers([]);
+      setError(err.message || 'Kullanıcılar yüklenemedi.');
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadProducts();
     loadCategories();
   }, []);
 
-  const handleCreateProduct = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (token) {
+      loadUsers();
+    } else {
+      setUsers([]);
+      setUsersLoading(false);
+    }
+  }, [token, loadUsers]);
+
+  const handleLogin = async (credentials) => {
+    try {
+      setAuthLoading(true);
+      setError('');
+      setNotice('');
+      const authData = await adminLogin(credentials);
+      const nextToken =
+        authData?.token ||
+        authData?.access_token ||
+        getAdminToken();
+
+      if (authData?.user?.role && authData.user.role !== 'admin') {
+        adminLogout();
+        setToken('');
+        setError('Bu hesap admin yetkisine sahip değil.');
+        return false;
+      }
+
+      setToken(nextToken);
+      setNotice('Admin girişi başarılı.');
+      return true;
+    } catch (err) {
+      setError(err.message || 'Giriş yapılamadı.');
+      return false;
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    adminLogout();
+    setToken('');
+    setUsers([]);
+    setNotice('Çıkış yapıldı.');
+    navigate('/login', { replace: true });
+  };
+
+  const handleCreateProduct = async ({ name, price, stock, categoryId }) => {
     setNotice('');
     setError('');
 
-    if (!name.trim() || price === '' || stock === '') {
+    if (!name || price === '' || stock === '') {
       setError('Lütfen ürün adı, fiyat ve stok alanlarını doldur.');
-      return;
+      return false;
     }
 
     try {
       setSubmitting(true);
       const payload = {
-        name: name.trim(),
+        name,
         price: Number(price),
         stock: Number(stock),
       };
@@ -77,14 +161,12 @@ export default function App() {
       }
 
       await createProduct(payload);
-      setName('');
-      setPrice('');
-      setStock('');
-      setCategoryId('');
       setNotice('Yeni ürün başarıyla eklendi.');
       await loadProducts();
+      return true;
     } catch (err) {
       setError(err.message || 'Ürün eklenirken hata oluştu.');
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -102,24 +184,24 @@ export default function App() {
     }
   };
 
-  const handleCreateCategory = async (e) => {
-    e.preventDefault();
+  const handleCreateCategory = async (name) => {
     setNotice('');
     setError('');
 
-    if (!categoryName.trim()) {
+    if (!name) {
       setError('Lütfen bir kategori adı gir.');
-      return;
+      return false;
     }
 
     try {
       setCategorySubmitting(true);
-      await createCategory({ name: categoryName.trim() });
-      setCategoryName('');
+      await createCategory({ name });
       setNotice('Yeni kategori başarıyla oluşturuldu.');
       await loadCategories();
+      return true;
     } catch (err) {
       setError(err.message || 'Kategori oluşturulurken hata oluştu.');
+      return false;
     } finally {
       setCategorySubmitting(false);
     }
@@ -137,170 +219,83 @@ export default function App() {
     }
   };
 
+  const isAuthenticated = Boolean(token);
+
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
-      <h1>E-Commerce MVP Admin Panel</h1>
+    <>
+      <AdminNavBar
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+        isAuthenticated={isAuthenticated}
+        onLogout={handleLogout}
+      />
 
-      <section
-        style={{
-          padding: '20px',
-          borderRadius: '12px',
-          border: '1px solid #374151',
-          marginBottom: '28px',
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Yeni Ürün Ekle</h2>
-
-        <form
-          onSubmit={handleCreateProduct}
-          style={{ display: 'grid', gap: '12px' }}
+      {(notice || error) && (
+        <div
+          className="page-shell"
+          style={{ paddingTop: '16px', paddingBottom: 0 }}
         >
-          <input
-            type="text"
-            placeholder="Ürün adı (örn: Kablosuz Mouse)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={{ padding: '10px', borderRadius: '8px' }}
-          />
-
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Fiyat (TL)"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              style={{ flex: '1 1 160px', padding: '10px', borderRadius: '8px' }}
-            />
-
-            <input
-              type="number"
-              placeholder="Stok adedi"
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
-              style={{ flex: '1 1 160px', padding: '10px', borderRadius: '8px' }}
-            />
-
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              style={{ flex: '1 1 180px', padding: '10px', borderRadius: '8px' }}
-            >
-              <option value="">Kategori seç (opsiyonel)</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name ?? cat.isim ?? `Kategori #${cat.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button type="submit" disabled={submitting} style={{ padding: '10px 16px' }}>
-            {submitting ? 'Ekleniyor...' : 'Ürünü Kaydet'}
-          </button>
-        </form>
-      </section>
-
-      <section
-        style={{
-          padding: '20px',
-          borderRadius: '12px',
-          border: '1px solid #374151',
-          marginBottom: '32px',
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Kategoriler ({categories.length})</h2>
-
-        <form
-          onSubmit={handleCreateCategory}
-          style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}
-        >
-          <input
-            type="text"
-            placeholder="Yeni kategori adı (örn: Spor & Outdoor)"
-            value={categoryName}
-            onChange={(e) => setCategoryName(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px' }}
-          />
-          <button
-            type="submit"
-            disabled={categorySubmitting}
-            style={{ padding: '10px 16px' }}
-          >
-            {categorySubmitting ? 'Ekleniyor...' : 'Kategori Ekle'}
-          </button>
-        </form>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {categories.map((cat) => (
-            <div
-              key={cat.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid #374151',
-              }}
-            >
-              <span>{cat.name ?? cat.isim ?? `Kategori #${cat.id}`}</span>
-              <button
-                type="button"
-                onClick={() => handleDeleteCategory(cat.id)}
-                style={{ padding: '6px 12px' }}
-              >
-                Sil
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {notice && (
-        <p style={{ color: '#22c55e', fontWeight: 600 }}>{notice}</p>
-      )}
-      {error && (
-        <p style={{ color: '#ef4444', fontWeight: 600 }}>Hata: {error}</p>
-      )}
-
-      <h2>Mevcut Ürünler ({products.length})</h2>
-
-      {loading ? (
-        <p>Ürünler yükleniyor...</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {products.map((product) => (
-            <div
-              key={product.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '1px solid #374151',
-              }}
-            >
-              <div>
-                <strong>{product.name ?? product.isim}</strong>
-                <div style={{ fontSize: '14px', opacity: 0.85 }}>
-                  {product.price ?? product.fiyat} TL • Stok:{' '}
-                  {product.stock ?? product.stok ?? 0} adet
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleDeleteProduct(product.id)}
-                style={{ padding: '8px 12px' }}
-              >
-                Sil
-              </button>
-            </div>
-          ))}
+          {notice && <div className="notice-banner">{notice}</div>}
+          {error && <div className="error-banner">Hata: {error}</div>}
         </div>
       )}
-    </div>
+
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <ProductsPage
+                products={products}
+                categories={categories}
+                loading={loading}
+                submitting={submitting}
+                onCreateProduct={handleCreateProduct}
+                onDeleteProduct={handleDeleteProduct}
+              />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/categories"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <CategoriesPage
+                categories={categories}
+                categorySubmitting={categorySubmitting}
+                onCreateCategory={handleCreateCategory}
+                onDeleteCategory={handleDeleteCategory}
+              />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <UsersPage users={users} usersLoading={usersLoading} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/users" replace />
+            ) : (
+              <LoginPage onLogin={handleLogin} authLoading={authLoading} />
+            )
+          }
+        />
+      </Routes>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AdminAppContent />
+    </BrowserRouter>
   );
 }
