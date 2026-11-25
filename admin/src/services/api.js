@@ -262,3 +262,34 @@ export async function resetPassword(payload) {
 
   return result;
 }
+
+export async function getAdminUserOrders(userId) {
+  const token = getAdminToken();
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/orders`, {
+    headers,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Kullanıcı siparişleri yüklenemedi.');
+  }
+
+  if (Array.isArray(result.data?.orders)) {
+    return result.data.orders;
+  }
+
+  if (Array.isArray(result.data)) {
+    return result.data;
+  }
+
+  return result.data?.data || [];
+}

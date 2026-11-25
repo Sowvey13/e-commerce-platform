@@ -27,6 +27,23 @@ export default function NavBar({ cartCount, user, theme, onToggleTheme }) {
           >
             Sepetim
           </NavLink>
+          {user && (
+  <NavLink
+    to="/addresses"
+    className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+  >
+    Adresler
+  </NavLink>
+)}
+
+{user && (
+  <NavLink
+    to="/orders"
+    className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+  >
+    Siparişlerim
+  </NavLink>
+)}
 
           {user ? (
             <NavLink

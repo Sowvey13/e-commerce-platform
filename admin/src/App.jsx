@@ -9,6 +9,7 @@ import {
   deleteCategory,
   deleteProduct,
   getAdminToken,
+  getAdminUserOrders,
   getCategories,
   getProducts,
   getUsers,
@@ -37,6 +38,9 @@ function AdminAppContent() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userOrders, setUserOrders] = useState([]);
+  const [userOrdersLoading, setUserOrdersLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -99,9 +103,29 @@ function AdminAppContent() {
       loadUsers();
     } else {
       setUsers([]);
+      setSelectedUser(null);
+      setUserOrders([]);
       setUsersLoading(false);
     }
   }, [token, loadUsers]);
+
+  const handleSelectUser = async (targetUser) => {
+    if (!targetUser) return;
+
+    setSelectedUser(targetUser);
+    setError('');
+
+    try {
+      setUserOrdersLoading(true);
+      const ordersList = await getAdminUserOrders(targetUser.id);
+      setUserOrders(ordersList);
+    } catch (err) {
+      setUserOrders([]);
+      setError(err.message || 'Kullanıcı siparişleri yüklenemedi.');
+    } finally {
+      setUserOrdersLoading(false);
+    }
+  };
 
   const handleLogin = async (credentials) => {
     try {
@@ -136,6 +160,8 @@ function AdminAppContent() {
     adminLogout();
     setToken('');
     setUsers([]);
+    setSelectedUser(null);
+    setUserOrders([]);
     setNotice('Çıkış yapıldı.');
     navigate('/login', { replace: true });
   };
@@ -274,7 +300,14 @@ function AdminAppContent() {
           path="/users"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <UsersPage users={users} usersLoading={usersLoading} />
+              <UsersPage
+                users={users}
+                usersLoading={usersLoading}
+                selectedUser={selectedUser}
+                userOrders={userOrders}
+                userOrdersLoading={userOrdersLoading}
+                onSelectUser={handleSelectUser}
+              />
             </ProtectedRoute>
           }
         />
@@ -289,15 +322,15 @@ function AdminAppContent() {
           }
         />
         <Route
-  path="/forgot-password"
-  element={
-    isAuthenticated ? (
-      <Navigate to="/users" replace />
-    ) : (
-      <ForgotPasswordPage />
-    )
-  }
-/>
+          path="/forgot-password"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/users" replace />
+            ) : (
+              <ForgotPasswordPage />
+            )
+          }
+        />
       </Routes>
     </>
   );

@@ -366,3 +366,118 @@ export async function resetPassword(payload) {
 
   return result;
 }
+
+export async function getAddresses() {
+  const response = await fetch(`${API_BASE_URL}/addresses`, {
+    headers: buildHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Adresler yüklenemedi.');
+  }
+
+  return Array.isArray(result.data) ? result.data : result.data?.data || [];
+}
+
+export async function createAddress(payload) {
+  const response = await fetch(`${API_BASE_URL}/addresses`, {
+    method: 'POST',
+    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Adres eklenemedi.');
+  }
+
+  return result.data || result;
+}
+
+export async function updateAddress(id, payload) {
+  const response = await fetch(`${API_BASE_URL}/addresses/${id}`, {
+    method: 'PUT',
+    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Adres güncellenemedi.');
+  }
+
+  return result.data || result;
+}
+
+export async function deleteAddress(id) {
+  const response = await fetch(`${API_BASE_URL}/addresses/${id}`, {
+    method: 'DELETE',
+    headers: buildHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Adres silinemedi.');
+  }
+
+  return result;
+}
+
+export async function getOrders() {
+  const response = await fetch(`${API_BASE_URL}/orders`, {
+    headers: buildHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Siparişler yüklenemedi.');
+  }
+
+  if (Array.isArray(result.data?.items)) {
+    return result.data.items;
+  }
+
+  if (Array.isArray(result.data)) {
+    return result.data;
+  }
+
+  return result.data?.data || [];
+}
+
+export async function createOrder(payload) {
+  const response = await fetch(`${API_BASE_URL}/orders`, {
+    method: 'POST',
+    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Sipariş oluşturulamadı.');
+  }
+
+  return result.data ?? result;
+}
+
+export async function payOrder(orderId, payload = { payment_method: 'mock' }) {
+  const response = await fetch(`${API_BASE_URL}/orders/${orderId}/pay`, {
+    method: 'POST',
+    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || result.status === false) {
+    throw new Error(result.message || 'Ödeme işlemi başarısız.');
+  }
+
+  return result.data ?? result;
+}
